@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NFL Trivia Game</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #111; color: #fff; overflow: hidden; }
+    #scoreboard {
+      position: fixed;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #222;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 1.1em;
+      font-weight: bold;
+      opacity: 0.95;
+      z-index: 10;
+      white-space: nowrap;
+      max-width: 95vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .slide {
+      height: 100vh;
+      padding: 40px 16px 24px;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+    .slide.active { display: flex; }
+    .question { font-size: 1.7em; margin-bottom: 20px; font-weight: bold; }
+    .answer { font-size: 5em; margin-top: 30px; opacity: 1; display: none; font-weight: bold; color: #ffffff; line-height: 1.05; }
+    .hint { font-size: 0.9em; margin-bottom: 12px; opacity: 0.65; display: none; }
+    button { padding: 14px 26px; font-size: 1.2em; border: none; border-radius: 999px; background: #444; color: #fff; }
+    button:active { background: #666; }
+    .hint-btn { padding: 6px 12px; font-size: 0.8em; border-radius: 6px; margin-bottom: 8px; }
+    .score-actions { margin-top: 16px; display: flex; gap: 10px; justify-content: center; }
+    .score-btn { padding: 10px 22px; font-size: 2.2em; border-radius: 999px; }
+    .nav-arrows { margin-top: 18px; display: flex; gap: 40px; justify-content: center; }
+    .nav-arrow-btn { font-size: 2.2em; background: none; border: none; color: #888; padding: 0 10px; }
+    #finale-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.96);
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 24px;
+      z-index: 30;
+    }
+    #finale-overlay h1 {
+      font-size: 2.4em;
+      margin-bottom: 12px;
+    }
+    #final-score-text {
+      font-size: 1.6em;
+      margin-bottom: 8px;
+    }
+    #final-tier-text {
+      font-size: 1.3em;
+      margin-bottom: 20px;
+    }
+    #restart-btn {
+      margin-top: 18px;
+    }
+    #confetti {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 25;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="confetti"></canvas>
+<div id="scoreboard">Q: 1/100 | Correct: 0/0 (0%)</div>
+
+<div id="slides">
+"""
+
+# Adding all 100 question blocks dynamically
+for i in range(1, 101):
+    question_text = f"Question {i} text here"
+    hint_text = f"Hint for question {i}"
+    answer_text = f"Answer for question {i}"
+    
+    html_content += f"""
+  <div class="slide">
+    <button class="hint-btn" onclick="revealHint(this)">Hint</button>
+    <div class="hint">{hint_text}</div>
+    <div class="question">{question_text}</div>
+    <button class="reveal" onclick="reveal(this)">Show Answer</button>
+    <div class="answer">{answer_text}</div>
+    <div class="score-actions">
+      <button class="score-btn" onclick="markAnswer(true)" style="background:#2ecc71;">✔</button>
+      <button class="score-btn" onclick="markAnswer(false)" style="background:#e74c3c;">✖</button>
+    </div>
+    <div class="nav-arrows">
+      <button class="nav-arrow-btn" onclick="prevSlide()">◀</button>
+      <button class="nav-arrow-btn" onclick="nextSlide()">▶</button>
+    </div>
+  </div>
+"""
+
+# End of the HTML content
+html_content += """
+</div>
+
+<div id="finale-overlay">
+  <h1 id="final-title">FINAL SCORE</h1>
+  <div id="final-score-text"></div>
+  <div id="final-tier-text"></div>
+  <button id="restart-btn" onclick="restartGame()">Play Again</button>
+</div>
+
+<script>
+  let index = 0;
+  const slides = document.querySelectorAll('.slide');
+  const answered = new Array(slides.length).fill(null); // true = correct, false = incorrect
+  const scoreboard = document.getElementById('scoreboard');
+  const finaleOverlay = document.getElementById('finale-overlay');
+  const finalScoreText = document.getElementById('final-score-text');
+  const finalTierText = document.getElementById('final-tier-text');
+  const confettiCanvas = document.getElementById('confetti');
+  const confettiCtx = confettiCanvas.getContext('2d');
+  let confettiPieces = [];
+  let confettiRunning = false;
+
+  function resizeConfetti() {
+    confettiCanvas.width = window.innerWidth;
+    confettiCanvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resizeConfetti);
+  resizeConfetti();
+
+  function showSlide(i) {
+    if (i < 0) i = slides.length - 1;
+    if (i >= slides.length) i = 0;
+    index = i;
+    slides.forEach((s, idx) => {
+      s.classList.toggle('active', idx === index);
+    });
+    updateScore();
+  }
+
+  function nextSlide() {
+    showSlide(index + 1);
+  }
+
+  function prevSlide() {
+    showSlide(index - 1);
+  }
+
+  function reveal(btn) {
+    const answer = btn.nextElementSibling;
+    if (answer) {
+      answer.style.display = 'block';
+      btn.style.display = 'none';
+    }
+  }
+
+  function revealHint(btn) {
+    const hint = btn.nextElementSibling;
+    if (hint) {
+      hint.style.display = 'block';
+      btn.style.display = 'none';
+    }
+  }
+
+  function markAnswer(isCorrect) {
+    answered[index] = isCorrect;
+    updateScore();
+    if (index === slides.length - 1) {
+      showFinale();
+    } else {
+      nextSlide();
+    }
+  }
+
+  function updateScore() {
+    let correctCount = 0;
+    let totalCount = 0;
+    answered.forEach(val => {
+      if (val !== null) {
+        totalCount++;
+        if (val === true) correctCount++;
+      }
+    });
+    const percent = totalCount === 0 ? 0 : Math.round((correctCount / totalCount) * 100);
+    scoreboard.textContent = `Q: ${index + 1}/${slides.length} | Correct: ${correctCount}/${totalCount} (${percent}%)`;
+  }
+
+  function showFinale() {
+    let correctCount = 0;
+    let totalCount = 0;
+    answered.forEach(val => {
+      if (val !== null) {
+        totalCount++;
+        if (val === true) correctCount++;
+      }
+    });
+    const percent = totalCount === 0 ? 0 : Math.round((correctCount / totalCount) * 100);
+
+    finalScoreText.textContent = `${percent}% correct (${correctCount}/${totalCount})`;
+    finalTierText.textContent = getTierText(percent);
+
+    scoreboard.style.display = 'none';
+    slides.forEach(s => s.classList.remove('active'));
+    finaleOverlay.style.display = 'flex';
+
+    if (percent >= 90) {
+      startConfetti();
+    }
+  }
+
+  function getTierText(percent) {
+    if (percent === 100) return 'LEGENDS. First-ballot NFL Trivia Hall of Famers.';
+    if (percent >= 90) return 'Elite NFL Sickos. Almost perfect.';
+    if (percent >= 80) return 'Damn good. Better than RedZone Guy.';
+    if (percent >= 70) return 'Respectable. Wildcard-caliber squad.';
+    if (percent >= 60) return 'Practice squad with upside.';
+    return 'Urban Meyer Jaguars energy. But fun was had.';
+  }
+
+  function restartGame() {
+    for (let i = 0; i < answered.length; i++) answered[i] = null;
+    finaleOverlay.style.display = 'none';
+    scoreboard.style.display = 'block';
+    stopConfetti();
+    showSlide(0);
+  }
+
+  function startConfetti() {
+    confettiPieces = [];
+    for (let i = 0; i < 200; i++) {
+      confettiPieces.push({
+        x: Math.random() * confettiCanvas.width,
+        y: Math.random() * confettiCanvas.height - confettiCanvas.height,
+        w: 5 + Math.random() * 5,
+        h: 8 + Math.random() * 8,
+        vy: 2 + Math.random() * 3,
+        vx: -1 + Math.random() * 2,
+        color: randomConfettiColor(),
+      });
+    }
+    if (!confettiRunning) {
+      confettiRunning = true;
+      requestAnimationFrame(confettiLoop);
+    }
+  }
+
+  function stopConfetti() {
+    confettiRunning = false;
+    confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+  }
+
+  function randomConfettiColor() {
+    const colors = ['#f1c40f', '#e67e22', '#e74c3c', '#2ecc71', '#1abc9c', '#3498db', '#9b59b6', '#ff6b81', '#fdcb6e'];
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  function confettiLoop() {
+    if (!confettiRunning) return;
+    confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+    confettiPieces.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.y > confettiCanvas.height) {
+        p.y = -10;
+        p.x = Math.random() * confettiCanvas.width;
+      }
+      confettiCtx.fillStyle = p.color;
+      confettiCtx.fillRect(p.x, p.y, p.w, p.h);
+    });
+    requestAnimationFrame(confettiLoop);
+  }
+
+  updateScore();
+</script>
+</body>
+</html>
