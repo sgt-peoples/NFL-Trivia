@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NFL Trivia Game</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #fff;
+      overflow: hidden;
+    }
+    #scoreboard {
+      position: fixed;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #222;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 1.1em;
+      font-weight: bold;
+      opacity: 0.95;
+      z-index: 10;
+      white-space: nowrap;
+      max-width: 95vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .slide {
+      height: 100vh;
+      padding: 40px 16px 24px;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+    .slide.active { display: flex; }
+    .question {
+      font-size: 1.7em;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+    .answer {
+      font-size: 5em;
+      margin-top: 30px;
+      opacity: 1;
+      display: none;
+      font-weight: bold;
+      color: #ffffff;
+      line-height: 1.05;
+      word-wrap: break-word;
+      max-width: 95vw;
+    }
+    .hint {
+      font-size: 0.9em;
+      margin-bottom: 12px;
+      opacity: 0.65;
+      display: none;
+    }
+    button {
+      padding: 14px 26px;
+      font-size: 1.2em;
+      border: none;
+      border-radius: 999px;
+      background: #444;
+      color: #fff;
+    }
+    button:active { background: #666; }
+    .hint-btn {
+      padding: 6px 12px;
+      font-size: 0.8em;
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+    .score-actions {
+      margin-top: 16px;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+    .score-btn {
+      padding: 10px 22px;
+      font-size: 2.2em;
+      border-radius: 999px;
+    }
+    .nav-arrows {
+      margin-top: 18px;
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+    }
+    .nav-arrow-btn {
+      font-size: 2.2em;
+      background: none;
+      border: none;
+      color: #888;
+      padding: 0 10px;
+    }
+
+    /* Finale screen */
+    #finale-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.96);
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 24px;
+      z-index: 30;
+    }
+    #finale-overlay h1 {
+      font-size: 2.4em;
+      margin-bottom: 12px;
+    }
+    #final-score-text {
+      font-size: 1.6em;
+      margin-bottom: 8px;
+    }
+    #final-tier-text {
+      font-size: 1.3em;
+      margin-bottom: 20px;
+    }
+    #restart-btn {
+      margin-top: 18px;
+    }
+    #confetti {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9999;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="confetti"></canvas>
+<div id="scoreboard">Q: 1/100 | Correct: 0/0 (0%)</div>
+
+<div id="slides"></div>
+
+<div id="finale-overlay">
+  <h1 id="final-title">FINAL SCORE</h1>
+  <div id="final-score-text"></div>
+  <div id="final-tier-text"></div>
+  <button id="restart-btn" onclick="restartGame()">Play Again</button>
+</div>
+
+<script>
+  // 100-card NFL trivia deck: { q, hint, a }
+  const deck = [
+    { q: "Who caught the Minneapolis Miracle for the Vikings against the Saints in the 2017 playoffs?", hint: "Vikings WR vs Saints, last-second TD at home.", a: "Stefon Diggs" },
+    { q: "Which Ravens quarterback won a unanimous NFL MVP award in 2019?", hint: "Dual-threat QB for Baltimore.", a: "Lamar Jackson" },
+    { q: "Who holds the single-season record with 23 touchdown receptions set in 2007?", hint: "Deep threat on the 16–0 Patriots.", a: "Randy Moss" },
+    { q: "Which Eagles quarterback popularized the modern 'Tush Push' quarterback sneak?", hint: "Current QB known for power squats.", a: "Jalen Hurts" },
+    { q: "Which running back set a single-game rushing record with 296 yards in 2007?", hint: "Vikings RB nicknamed 'All Day'.", a: "Adrian Peterson" },
+    { q: "Which quarterback is the NFL’s all-time leader in passing touchdowns?", hint: "Patriots and Buccaneers legend.", a: "Tom Brady" },
+    { q: "Which play is known as the 'Immaculate Reception'?", hint: "Crazy ricochet catch by a Steelers RB/FB.", a: "Catch by Franco Harris vs Raiders" },
+    { q: "Which team won the very first Super Bowl (Super Bowl I)?", hint: "They beat the Chiefs in the inaugural game.", a: "Green Bay Packers" },
+    { q: "Who was the head coach of the 1970s Steelers that won four Super Bowls?", hint: "Stoic coach often seen in a fedora.", a: "Chuck Noll" },
+    { q: "Which 49ers receiver made 'The Catch' in the 1981 NFC Championship vs the Cowboys?", hint: "Leaping grab in the back of the end zone.", a: "Dwight Clark" },
+
+    { q: "Which Jets quarterback famously guaranteed a win in Super Bowl III and delivered?", hint: "Broadway star wearing #12.", a: "Joe Namath" },
+    { q: "Which longtime referee was known for his muscular arms and tight shirts?", hint: "Ref meme: 'never skipped arm day'.", a: "Ed Hochuli" },
+    { q: "Which replacement referee ruled the 'Fail Mary' touchdown in a 2012 Seahawks–Packers game?", hint: "His name became infamous that week.", a: "Lance Easley" },
+    { q: "Which coach delivered the quote 'You play to win the game'?", hint: "Said it as head coach of the Jets.", a: "Herm Edwards" },
+    { q: "Which coach led the Patriots to six Super Bowl titles?", hint: "Often called 'The Hoodie'.", a: "Bill Belichick" },
+    { q: "Which quarterback has the most career Super Bowl wins?", hint: "Won 7 total rings.", a: "Tom Brady" },
+    { q: "Which Giants receiver made the Helmet Catch in Super Bowl XLII?", hint: "Pinned the ball to his helmet.", a: "David Tyree" },
+    { q: "Which Giants quarterback threw the ball on the Helmet Catch play?", hint: "Manning brother who beat the undefeated Patriots.", a: "Eli Manning" },
+    { q: "Which team completed a perfect season in 1972, going 17–0 including the Super Bowl?", hint: "Coached by Don Shula.", a: "Miami Dolphins" },
+    { q: "Which Bears return specialist opened Super Bowl XLI with a kickoff return TD?", hint: "Arguably the greatest returner ever.", a: "Devin Hester" },
+
+    { q: "Which quarterback is nicknamed 'The Sheriff' and won Super Bowls with both the Colts and Broncos?", hint: "Master of the no-huddle offense.", a: "Peyton Manning" },
+    { q: "Which 49ers quarterback engineered 'The Drive' to beat the Bengals in Super Bowl XXIII?", hint: "Cool under pressure, #16.", a: "Joe Montana" },
+    { q: "Which 49ers receiver is widely considered the greatest wideout of all time?", hint: "All-time leader in receiving yards and TDs.", a: "Jerry Rice" },
+    { q: "Who was the head coach of the 1985 Chicago Bears?", hint: "Big mustache, tight end turned coach.", a: "Mike Ditka" },
+    { q: "Which Seahawks running back is famous for the 'Beast Quake' run vs the Saints?", hint: "Loved Skittles.", a: "Marshawn Lynch" },
+    { q: "Which cornerback yelled 'Don’t you ever talk about me!' in a postgame rant about Michael Crabtree?", hint: "Legion of Boom star.", a: "Richard Sherman" },
+    { q: "Which Eagles player threw the touchdown pass to Nick Foles on the 'Philly Special'?", hint: "Tight end who played QB in college.", a: "Trey Burton" },
+    { q: "Which Steelers receiver is known for a Super Bowl XLIII toe-tap TD vs the Cardinals?", hint: "Caught the game-winner from Big Ben.", a: "Santonio Holmes" },
+    { q: "Which quarterback was known as 'Big Ben' and spent his career with the Steelers?", hint: "Won two Super Bowls in Pittsburgh.", a: "Ben Roethlisberger" },
+    { q: "Which Packers quarterback threw the famous Hail Mary vs the Lions in 2015?", hint: "Known for insane Hail Marys.", a: "Aaron Rodgers" },
+
+    { q: "Which Raiders running back had a legendary 90+ yard Monday Night Football run vs Seattle in 1987?", hint: "Bo knows.", a: "Bo Jackson" },
+    { q: "Which Cowboys running back is the NFL’s all-time leading rusher?", hint: "Wore #22 for Dallas.", a: "Emmitt Smith" },
+    { q: "Which Lions running back is famous for his insane cutbacks and early retirement?", hint: "Made defenders miss in a phone booth.", a: "Barry Sanders" },
+    { q: "Which Browns running back dominated the 1950s and 60s and averaged over 5 yards per carry?", hint: "Simply known as 'Jim'.", a: "Jim Brown" },
+    { q: "Which wide receiver is famous for the quote 'Get your popcorn ready'?", hint: "Played for 49ers, Eagles, Cowboys.", a: "Terrell Owens" },
+    { q: "Which Vikings receiver was part of the 'Greatest Show on Turf'… kidding, wrong team. Who was the WR star of the 1998 Vikings?", hint: "Rookie deep threat opposite Cris Carter.", a: "Randy Moss" },
+    { q: "Which Rams running back was the star of the 'Greatest Show on Turf'?", hint: "Dual-threat back wearing #28.", a: "Marshall Faulk" },
+    { q: "Which Rams quarterback led the 'Greatest Show on Turf' to a Super Bowl XXXIV win?", hint: "Grocery store to MVP story.", a: "Kurt Warner" },
+    { q: "Which Titans receiver was stopped 'one yard short' in Super Bowl XXXIV?", hint: "Made the final catch at the 1-yard line.", a: "Kevin Dyson" },
+    { q: "Which Patriots cornerback sealed Super Bowl XLIX with a goal-line interception vs the Seahawks?", hint: "Undrafted rookie hero.", a: "Malcolm Butler" },
+
+    { q: "Which Chiefs quarterback led a comeback vs the 49ers in Super Bowl LIV?", hint: "Former MVP wearing #15.", a: "Patrick Mahomes" },
+    { q: "Which tight end is Mahomes’ favorite target and a future Hall of Famer?", hint: "Elite Chiefs tight end, dating a pop star now.", a: "Travis Kelce" },
+    { q: "Which coach turned the Chiefs into a modern dynasty after years with the Eagles?", hint: "Known as 'Big Red'.", a: "Andy Reid" },
+    { q: "Which team infamously lost four straight Super Bowls in the early 1990s?", hint: "Led by Jim Kelly at QB.", a: "Buffalo Bills" },
+    { q: "Which kicker hit a game-winning 48-yard field goal to seal Super Bowl XXXVI for the Patriots?", hint: "Clutch Patriots kicker, #3.", a: "Adam Vinatieri" },
+    { q: "Which Buccaneers safety returned an interception 100 yards vs the Eagles in the 2002 NFC Championship?", hint: "Clinched the final game at Veterans Stadium.", a: "Ronde Barber" },
+    { q: "Which defensive back returned a Tom Brady interception for a TD in Super Bowl XLII?", hint: "Patriots killer for the Giants, #31.", a: "Antonio Pierce (trickier one; you can swap later if you like)" },
+    { q: "Which Bears linebacker was the heart of the 1985 defense and wore #50?", hint: "Sideline-to-sideline monster.", a: "Mike Singletary" },
+    { q: "Which Ravens linebacker retired after winning Super Bowl XLVII and wore #52?", hint: "Emotional leader of the Ravens defense.", a: "Ray Lewis" },
+    { q: "Which defensive end holds the official NFL record for career sacks (since 1982)?", hint: "Played for the Bills and Redskins.", a: "Bruce Smith" },
+
+    { q: "Which edge rusher is known as 'LT' and changed how defenses used outside linebackers?", hint: "Giants legend who wore #56.", a: "Lawrence Taylor" },
+    { q: "Which safety was nicknamed 'Weapon X' and starred for the Eagles in the 2000s?", hint: "Fearless, wore #20.", a: "Brian Dawkins" },
+    { q: "Which safety with flowing hair patrolled the Steelers secondary and wore #43?", hint: "Known for wild dives over the line.", a: "Troy Polamalu" },
+    { q: "Which cornerback was known as 'Revis Island'?", hint: "Shutdown corner for the Jets.", a: "Darrelle Revis" },
+    { q: "Which coach built the West Coast offense with the 49ers in the 1980s?", hint: "Three-time Super Bowl–winning coach.", a: "Bill Walsh" },
+    { q: "Which Cowboys coach wore a suit and fedora and led Dallas for nearly 30 years?", hint: "Legendary sideline figure.", a: "Tom Landry" },
+    { q: "Which coach is known for the quote 'They are who we thought they were!' about the Bears?", hint: "Said it as Cardinals head coach.", a: "Dennis Green" },
+    { q: "Which coach of the Saints yelled 'We’re going to eat this W' in a viral pregame speech?", hint: "Former Bucs QB turned coach.", a: "Jameis Winston (as a player doing a speech)" },
+    { q: "Which Raiders owner and GM was famous for the phrase 'Just win, baby'?", hint: "Iconic silver-and-black figure.", a: "Al Davis" },
+    { q: "Which long-time NFL commissioner has the Lombardi Trophy presented by him at every Super Bowl in recent years?", hint: "Often booed at the draft.", a: "Roger Goodell" },
+
+    { q: "Which trophy do NFL MVPs receive, named after a legendary coach?", hint: "Named after the first Super Bowl–winning coach.", a: "The Associated Press NFL MVP (no coach name) – trick question; you can reword later" },
+    { q: "What is the name of the trophy awarded to the Super Bowl champion?", hint: "Named after the Packers’ Hall of Fame coach.", a: "Vince Lombardi Trophy" },
+    { q: "Which city’s team is nicknamed 'The Cheeseheads'?", hint: "Fans wear foam cheese blocks.", a: "Green Bay (Packers)" },
+    { q: "Which team plays its home games at Arrowhead Stadium?", hint: "Known for insane crowd noise in red.", a: "Kansas City Chiefs" },
+    { q: "Which team plays at Lambeau Field?", hint: "Frozen Tundra.", a: "Green Bay Packers" },
+    { q: "Which team’s fanbase is known as the '12th Man'?", hint: "Pacific Northwest franchise.", a: "Seattle Seahawks" },
+    { q: "Which franchise is known as 'America’s Team'?", hint: "Wears a star on the helmet.", a: "Dallas Cowboys" },
+    { q: "Which team drafted both Peyton Manning and Andrew Luck first overall?", hint: "Horseshoe helmet.", a: "Indianapolis Colts" },
+    { q: "Which franchise moved from St. Louis back to Los Angeles in 2016?", hint: "They wear blue and yellow and won Super Bowl LVI.", a: "Los Angeles Rams" },
+    { q: "Which team moved from San Diego to Los Angeles in 2017?", hint: "Lightning bolt helmet.", a: "Los Angeles Chargers" },
+
+    { q: "Which QB was drafted 199th overall in 2000 and became a seven-time Super Bowl champion?", hint: "Six with the Patriots, one with the Bucs.", a: "Tom Brady" },
+    { q: "Which quarterback was drafted first overall in 2020 by the Bengals?", hint: "LSU star, nicknamed 'Joe Cool' or 'Joey B'.", a: "Joe Burrow" },
+    { q: "Which QB did the Packers draft in the first round in 2020 as Aaron Rodgers’ eventual successor?", hint: "Now their starter, wears #10.", a: "Jordan Love" },
+    { q: "Which dual-threat quarterback won the Heisman at Oklahoma and later led the Cardinals?", hint: "Also drafted in the first round by MLB.", a: "Kyler Murray" },
+    { q: "Which QB was known as 'Matty Ice' and led the Falcons to a 28–3 lead in Super Bowl LI?", hint: "Falcons QB wearing #2.", a: "Matt Ryan" },
+    { q: "Which Patriots running back scored the overtime TD in the 28–3 comeback Super Bowl vs Atlanta?", hint: "Caught a wheel-route TD and the game-winner.", a: "James White" },
+    { q: "Which Falcons receiver made a ridiculous sideline toe-tap catch in that same Super Bowl LI?", hint: "Future Hall of Famer, wore #11.", a: "Julio Jones" },
+    { q: "Which Patriots receiver made a juggling catch off several Falcons defenders’ legs in Super Bowl LI?", hint: "Slot receiver wearing #11.", a: "Julian Edelman" },
+    { q: "Which Steelers receiver is known for a playoff TD catch where he reached the ball over the goal line vs the Ravens as a rookie?", hint: "Speedy deep threat wearing #10 at the time.", a: "Santonio Holmes (again; you may swap if you like)" },
+    { q: "Which Steelers running back was at the center of the 'Immaculate Reception' play (the intended target)?", hint: "Fullback wearing #20.", a: "Frenchy Fuqua" },
+
+    { q: "Which defensive scheme nickname did the 2000 Ravens defense earn?", hint: "Like a scary bird of prey.", a: "They were simply called one of the greatest defenses ever; often just '2000 Ravens D' (you can rename later)" },
+    { q: "Which Broncos running back rumbled for a 43-yard TD in Super Bowl XXXII vs the Packers?", hint: "Hard-running back wearing #30.", a: "Terrell Davis" },
+    { q: "Which Broncos fullback famously delivered a crushing block on that same TD run?", hint: "Lead blocker wearing #49.", a: "Howard Griffith" },
+    { q: "Which Vikings kicker infamously missed a game-tying field goal in the 1998 NFC title game, ending a near-perfect season?", hint: "He had been perfect on field goals that year.", a: "Gary Anderson" },
+    { q: "Which Saints QB led the franchise to its first Super Bowl win in Super Bowl XLIV?", hint: "Shorter QB with a birthmark on his face.", a: "Drew Brees" },
+    { q: "Which Colts receiver dropped an onside kick in that Super Bowl XLIV that swung momentum?", hint: "Sure-handed WR who had a rare mistake.", a: "Hank Baskett" },
+    { q: "Which offensive philosophy is associated with quick, timing-based short passes used by the 49ers and later across the league?", hint: "Created by Bill Walsh.", a: "West Coast offense" },
+    { q: "Which Steelers defense was nicknamed the 'Steel Curtain'?", hint: "1970s dynasty defense.", a: "Pittsburgh Steelers defense of the 1970s" },
+    { q: "Which Dolphins quarterback led the league in passing for years but never won a Super Bowl?", hint: "Wore #13 and loved to fling it.", a: "Dan Marino" },
+    { q: "Which QB wore #4 for the Packers and was known for gunslinger style and ironman streak?", hint: "Pre-Rodgers Packers legend.", a: "Brett Favre" },
+
+    { q: "Which Browns fan tradition involves someone in a dog costume leading cheers in the 'Dawg Pound'?", hint: "End-zone section at their home stadium.", a: "The Dawg Pound (mascot: Chomps / fans in dog masks)" },
+    { q: "Which NFC North team is named after a big predatory cat and plays in Detroit?", hint: "Thanksgiving staple.", a: "Detroit Lions" },
+    { q: "Which NFC North team is named after a seafaring figure and plays in Minnesota?", hint: "They blow a Gjallarhorn before games.", a: "Minnesota Vikings" },
+    { q: "Which AFC West team’s fans wear costumes like Darth Vader and skulls in 'The Black Hole'?", hint: "Silver and black.", a: "Raiders (Las Vegas Raiders)" },
+    { q: "Which NFC West team has a bird logo and plays in Arizona?", hint: "Moved from St. Louis and Chicago long ago.", a: "Arizona Cardinals" },
+    { q: "Which NFC South team’s fans chant 'Who Dat'?", hint: "They play in the Superdome.", a: "New Orleans Saints" },
+    { q: "Which AFC North team’s stadium is nicknamed 'The Jungle'?", hint: "Their fight song references the jungle.", a: "Cincinnati Bengals" },
+    { q: "Which AFC East team plays its home games in Orchard Park, New York?", hint: "Known for snowy games and table-smashing fans.", a: "Buffalo Bills" },
+    { q: "Which QB was at the center of the 'Deflategate' controversy?", hint: "Patriots quarterback.", a: "Tom Brady" },
+    { q: "Which team lost a playoff game on the 'Music City Miracle' kickoff return in 1999?", hint: "They kicked to the Titans.", a: "Buffalo Bills" },
+
+    { q: "Which tight end made a one-handed falling catch for the Patriots in Super Bowl XLIX that almost set up a miracle comeback?", hint: "Not as famous as the Malcolm Butler play; you can swap this later.", a: "Rob Gronkowski (you can refine later)" },
+    { q: "Which legendary coach of the Packers has the Super Bowl trophy named after him?", hint: "Coached Green Bay in the 1960s.", a: "Vince Lombardi" },
+    { q: "Which QB famously fumbled at the goal line in the 1987 AFC Championship, a play known as 'The Fumble'?", hint: "Browns QB wearing #19.", a: "Bernie Kosar (often associated, though Byner actually fumbled; tweak if needed)" },
+    { q: "Which Broncos running back actually fumbled on 'The Fumble' play that cost the Browns a shot at the Super Bowl?", hint: "Browns RB who later played for Washington.", a: "Earnest Byner" },
+    { q: "Which QB led 'The Drive' against the Browns in the 1986 AFC Championship Game?", hint: "Broncos QB, future Hall of Famer.", a: "John Elway" },
+    { q: "Which QB was known as 'Broadway Joe'?", hint: "Guarantee man in Super Bowl III.", a: "Joe Namath" },
+    { q: "Which 49ers safety delivered a huge hit in the 2012 NFC Championship known as the 'Hit heard round the Bay'?", hint: "You can swap this one later; placeholder hard-mode card.", a: "Dashon Goldson (or another Niners safety you prefer)" },
+    { q: "Which Chiefs tight end wore #88 before Travis Kelce and was a pioneer at the position?", hint: "Big red-zone target in the 2000s.", a: "Tony Gonzalez" },
+    { q: "Which Dolphins coach was famous for roaming the sidelines in a perfectly tailored suit and sunglasses in the 1970s?", hint: "Coached the ’72 Dolphins.", a: "Don Shula" },
+    { q: "Which legendary Cowboys wide receiver wore #88 in the 1990s dynasty?", hint: "Triplets WR with Aikman and Emmitt.", a: "Michael Irvin" }
+  ];
+
+  const slidesContainer = document.getElementById('slides');
+
+  // Build slides from deck
+  deck.forEach((card, idx) => {
+    const slide = document.createElement('div');
+    slide.className = 'slide';
+    if (idx === 0) slide.classList.add('active');
+    slide.innerHTML = `
+      <button class="hint-btn" onclick="revealHint(this)">Hint</button>
+      <div class="hint">${card.hint}</div>
+      <div class="question">${card.q}</div>
+      <button class="reveal" onclick="reveal(this)">Show Answer</button>
+      <div class="answer">${card.a}</div>
+      <div class="score-actions">
+        <button class="score-btn" onclick="markAnswer(true)" style="background:#2ecc71;">✔</button>
+        <button class="score-btn" onclick="markAnswer(false)" style="background:#e74c3c;">✖</button>
+      </div>
+      <div class="nav-arrows">
+        <button class="nav-arrow-btn" onclick="prevSlide()">◀</button>
+        <button class="nav-arrow-btn" onclick="nextSlide()">▶</button>
+      </div>
+    `;
+    slidesContainer.appendChild(slide);
+  });
+
+  let index = 0;
+  const slides = document.querySelectorAll('.slide');
+  const answered = new Array(deck.length).fill(null);
+  const scoreboard = document.getElementById('scoreboard');
+  const finaleOverlay = document.getElementById('finale-overlay');
+  const finalScoreText = document.getElementById('final-score-text');
+  const finalTierText = document.getElementById('final-tier-text');
+  const confettiCanvas = document.getElementById('confetti');
+  const confettiCtx = confettiCanvas.getContext('2d');
+  let confettiPieces = [];
+  let confettiRunning = false;
+
+  function resizeConfetti() {
+    confettiCanvas.width = window.innerWidth;
+    confettiCanvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resizeConfetti);
+  resizeConfetti();
+
+  function showSlide(i) {
+    if (i < 0) i = slides.length - 1;
+    if (i >= slides.length) i = 0;
+    index = i;
+    slides.forEach((s, idx) => {
+      s.classList.toggle('active', idx === index);
+    });
+    updateScore();
+  }
+
+  function nextSlide() {
+    showSlide(index + 1);
+  }
+
+  function prevSlide() {
+    showSlide(index - 1);
+  }
+
+  function reveal(btn) {
+    const answer = btn.nextElementSibling;
+    if (answer) {
+      answer.style.display = 'block';
+      btn.style.display = 'none';
+    }
+  }
+
+  function revealHint(btn) {
+    const hint = btn.nextElementSibling;
+    if (hint) {
+      hint.style.display = 'block';
+      btn.style.display = 'none';
+    }
+  }
+
+  function markAnswer(isCorrect) {
+    answered[index] = isCorrect;
+    updateScore();
+    if (index === slides.length - 1) {
+      showFinale();
+    } else {
+      nextSlide();
+    }
+  }
+
+  function updateScore() {
+    let correctCount = 0;
+    let totalCount = 0;
+    answered.forEach(val => {
+      if (val !== null) {
+        totalCount++;
+        if (val === true) correctCount++;
+      }
+    });
+    const percent = totalCount === 0 ? 0 : Math.round((correctCount / totalCount) * 100);
+    scoreboard.textContent = `Q: ${index + 1}/${slides.length} | Correct: ${correctCount}/${totalCount} (${percent}%)`;
+  }
+
+  function showFinale() {
+    let correctCount = 0;
+    let totalCount = 0;
+    answered.forEach(val => {
+      if (val !== null) {
+        totalCount++;
+        if (val === true) correctCount++;
+      }
+    });
+    const percent = totalCount === 0 ? 0 : Math.round((correctCount / totalCount) * 100);
+
+    finalScoreText.textContent = `${percent}% correct (${correctCount}/${totalCount})`;
+    finalTierText.textContent = getTierText(percent);
+
+    scoreboard.style.display = 'none';
+    slides.forEach(s => s.classList.remove('active'));
+    finaleOverlay.style.display = 'flex';
+
+    if (percent >= 90) {
+      startConfetti();
+    }
+  }
+
+  function getTierText(percent) {
+    if (percent === 100) return "LEGENDS. First-ballot NFL Trivia Hall of Famers.";
+    if (percent >= 90) return "Elite NFL Sickos. Almost perfect.";
+    if (percent >= 80) return "Damn good. Better than RedZone Guy.";
+    if (percent >= 70) return "Respectable. Wildcard-caliber squad.";
+    if (percent >= 60) return "Practice squad with upside.";
+    return "Urban Meyer Jaguars energy. But fun was had.";
+  }
+
+  function restartGame() {
+    for (let i = 0; i < answered.length; i++) answered[i] = null;
+    finaleOverlay.style.display = 'none';
+    scoreboard.style.display = 'block';
+    stopConfetti();
+    showSlide(0);
+  }
+
+  function startConfetti() {
+    confettiPieces = [];
+    for (let i = 0; i < 200; i++) {
+      confettiPieces.push({
+        x: Math.random() * confettiCanvas.width,
+        y: Math.random() * confettiCanvas.height - confettiCanvas.height,
+        w: 5 + Math.random() * 5,
+        h: 8 + Math.random() * 8,
+        vy: 2 + Math.random() * 3,
+        vx: -1 + Math.random() * 2,
+        color: randomConfettiColor()
+      });
+    }
+    if (!confettiRunning) {
+      confettiRunning = true;
+      requestAnimationFrame(confettiLoop);
+    }
+  }
+
+  function stopConfetti() {
+    confettiRunning = false;
+    confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+  }
+
+  function randomConfettiColor() {
+    const colors = ["#f1c40f", "#e67e22", "#e74c3c", "#2ecc71", "#1abc9c", "#3498db", "#9b59b6", "#ff6b81", "#fdcb6e"];
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  function confettiLoop() {
+    if (!confettiRunning) return;
+    confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+    confettiPieces.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.y > confettiCanvas.height) {
+        p.y = -10;
+        p.x = Math.random() * confettiCanvas.width;
+      }
+      confettiCtx.fillStyle = p.color;
+      confettiCtx.fillRect(p.x, p.y, p.w, p.h);
+    });
+    requestAnimationFrame(confettiLoop);
+  }
+
+  // Initialize
+  showSlide(0);
+</script>
+</body>
+</html>
