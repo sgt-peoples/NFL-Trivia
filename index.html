@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NFL Trivia Game</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #fff;
+      overflow: hidden;
+    }
+    #scoreboard {
+      position: fixed;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #222;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 1.1em;
+      font-weight: bold;
+      opacity: 0.95;
+      z-index: 10;
+      white-space: nowrap;
+      max-width: 95vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .slide {
+      height: 100vh;
+      padding: 40px 16px 24px;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+    .slide.active { display: flex; }
+    .question {
+      font-size: 1.7em;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+    .answer {
+      font-size: 5em;
+      margin-top: 30px;
+      opacity: 1;
+      display: none;
+      font-weight: bold;
+      color: #ffffff;
+      line-height: 1.05;
+      word-wrap: break-word;
+      max-width: 95vw;
+    }
+    .hint {
+      font-size: 0.9em;
+      margin-bottom: 12px;
+      opacity: 0.65;
+      display: none;
+    }
+    button {
+      padding: 14px 26px;
+      font-size: 1.2em;
+      border: none;
+      border-radius: 999px;
+      background: #444;
+      color: #fff;
+    }
+    button:active { background: #666; }
+    .hint-btn {
+      padding: 6px 12px;
+      font-size: 0.8em;
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+    .score-actions {
+      margin-top: 16px;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+    .score-btn {
+      padding: 10px 22px;
+      font-size: 2.2em;
+      border-radius: 999px;
+    }
+    .nav-arrows {
+      margin-top: 18px;
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+    }
+    .nav-arrow-btn {
+      font-size: 2.2em;
+      background: none;
+      border: none;
+      color: #888;
+      padding: 0 10px;
+    }
+
+    /* Finale screen */
+    #finale-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.96);
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 24px;
+      z-index: 30;
+    }
+    #finale-overlay h1 {
+      font-size: 2.4em;
+      margin-bottom: 12px;
+    }
+    #final-score-text {
+      font-size: 1.6em;
+      margin-bottom: 8px;
+    }
+    #final-tier-text {
+      font-size: 1.3em;
+      margin-bottom: 20px;
+    }
+    #restart-btn {
+      margin-top: 18px;
+    }
+    #confetti {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9999;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="confetti"></canvas>
+<div id="scoreboard">Q: 1/100 | Correct: 0/0 (0%)</div>
+
+<!-- EMPTY — slides will be inserted dynamically -->
+<div id="slides"></div>
+
+<div id="finale-overlay">
+  <h1 id="final-title">FINAL SCORE</h1>
+  <div id="final-score-text"></div>
+  <div id="final-tier-text"></div>
+  <button id="restart-btn" onclick="restartGame()">Play Again</button>
+</div>
+
+<script>
+/* FULL 100-CARD NFL TRIVIA DECK */
+const deck = [
+  { q:"Who caught the Minneapolis Miracle?", hint:"Vikings WR vs Saints, last-second TD.", a:"Stefon Diggs" },
+  { q:"Who won unanimous MVP in 2019?", hint:"Ravens QB.", a:"Lamar Jackson" },
+  { q:"Who holds the record with 23 receiving TDs?", hint:"2007 Patriots.", a:"Randy Moss" },
+  { q:"Which QB popularized the Tush Push?", hint:"Eagles QB.", a:"Jalen Hurts" },
+
+  /* ⬇️ 96 more cards ⬇️ */
+  { q:"Who holds the single-game rushing record of 296 yards?", hint:"Vikings RB.", a:"Adrian Peterson" },
+  { q:"Who is the all-time passing TD leader?", hint:"Patriots/Bucs legend.", a:"Tom Brady" },
+  { q:"Who made the Immaculate Reception?", hint:"Steelers RB/FB.", a:"Franco Harris" },
+  { q:"Who won Super Bowl I?", hint:"Coached by Lombardi.", a:"Green Bay Packers" },
+  { q:"Who was the Steelers’ 4-time SB coach?", hint:"1970s dynasty.", a:"Chuck Noll" },
+  { q:"Who made 'The Catch'?", hint:"49ers WR.", a:"Dwight Clark" },
+  { q:"Who guaranteed a SB III win?", hint:"Jets QB.", a:"Joe Namath" },
+  { q:"Which ref was known for huge biceps?", hint:"Legendary official.", a:"Ed Hochuli" },
+  { q:"Who ruled the 'Fail Mary' TD?", hint:"Replacement ref.", a:"Lance Easley" },
+  { q:"Who said 'You play to win the game'?", hint:"Jets coach.", a:"Herm Edwards" },
+  { q:"Patriots coach with 6 SB wins?", hint:"'The Hoodie'.", a:"Bill Belichick" },
+
+  { q:"Who made the Helmet Catch?", hint:"Giants WR.", a:"David Tyree" },
+  { q:"Who threw the Helmet Catch?", hint:"Giants QB.", a:"Eli Manning" },
+  { q:"Only undefeated team including SB?", hint:"Perfect season.", a:"1972 Dolphins" },
+  { q:"Who returned SB XLI opening kickoff?", hint:"Bears returner.", a:"Devin Hester" },
+  { q:"Who is 'The Sheriff'?", hint:"Colts/Broncos QB.", a:"Peyton Manning" },
+  { q:"Who led 'The Drive'?", hint:"49ers QB.", a:"Joe Montana" },
+  { q:"Greatest WR of all time?", hint:"49ers legend.", a:"Jerry Rice" },
+  { q:"1985 Bears coach?", hint:"Mustache icon.", a:"Mike Ditka" },
+  { q:"Who caused the Beast Quake?", hint:"Seahawks RB.", a:"Marshawn Lynch" },
+  { q:"'Don’t talk about me!' corner?", hint:"LOB star.", a:"Richard Sherman" },
+
+  { q:"Who threw the Philly Special TD?", hint:"Eagles TE.", a:"Trey Burton" },
+  { q:"Who toe-tapped in SB XLIII?", hint:"Steelers WR.", a:"Santonio Holmes" },
+  { q:"Who is 'Big Ben'?", hint:"Steelers QB.", a:"Ben Roethlisberger" },
+  { q:"Hail Mary king vs Lions?", hint:"Packers QB.", a:"Aaron Rodgers" },
+  { q:"MNFB 90-yard run legend?", hint:"Raiders RB.", a:"Bo Jackson" },
+  { q:"NFL all-time rushing leader?", hint:"Cowboys RB.", a:"Emmitt Smith" },
+  { q:"Lions RB with crazy cutbacks?", hint:"Retired early.", a:"Barry Sanders" },
+  { q:"1950s Browns RB GOAT?", hint:"Wore #32.", a:"Jim Brown" },
+  { q:"'Get your popcorn ready' WR?", hint:"Star diva WR.", a:"Terrell Owens" },
+  { q:"1998 Vikings rookie phenom?", hint:"Deep threat.", a:"Randy Moss" },
+
+  { q:"'Greatest Show on Turf' RB?", hint:"Dual-threat.", a:"Marshall Faulk" },
+  { q:"QB of Greatest Show on Turf?", hint:"Super Bowl MVP.", a:"Kurt Warner" },
+  { q:"Stopped 1 yard short in SB XXXIV?", hint:"Titans WR.", a:"Kevin Dyson" },
+  { q:"Goal-line INT in SB XLIX?", hint:"Patriots CB.", a:"Malcolm Butler" },
+  { q:"SB LIV comeback QB?", hint:"Chiefs #15.", a:"Patrick Mahomes" },
+  { q:"Chiefs star TE?", hint:"Future HOF.", a:"Travis Kelce" },
+  { q:"Chiefs dynasty coach?", hint:"Big Red.", a:"Andy Reid" },
+  { q:"Lost 4 straight SBs?", hint:"AFC 1990s.", a:"Buffalo Bills" },
+  { q:"SB XXXVI winning FG kicker?", hint:"Patriots clutch.", a:"Adam Vinatieri" },
+  { q:"100-yard NFC Champ pick-six?", hint:"Bucs DB.", a:"Ronde Barber" },
+
+  { q:"Famous returner #43 Steelers?", hint:"Hair icon.", a:"Troy Polamalu" },
+  { q:"Shutdown corner 'Island'?", hint:"Jets CB.", a:"Darrelle Revis" },
+  { q:"49ers WCO creator?", hint:"Genius coach.", a:"Bill Walsh" },
+  { q:"Cowboys suit-and-hat coach?", hint:"Long tenure.", a:"Tom Landry" },
+  { q:"'They are who we thought they were'?", hint:"Cards coach.", a:"Dennis Green" },
+  { q:"'Eat this W' speech?", hint:"QB meme.", a:"Jameis Winston" },
+  { q:"'Just win, baby' owner?", hint:"Raiders legend.", a:"Al Davis" },
+  { q:"Commissioner often booed?", hint:"Draft stage.", a:"Roger Goodell" },
+  { q:"SB champion trophy name?", hint:"NFL's top trophy.", a:"Vince Lombardi Trophy" },
+  { q:"Cheesehead fans?", hint:"NFC North team.", a:"Green Bay Packers" },
+
+  { q:"Arrowhead Stadium team?", hint:"Loudest crowd.", a:"Kansas City Chiefs" },
+  { q:"Lambeau Field team?", hint:"Frozen Tundra.", a:"Green Bay Packers" },
+  { q:"'12th Man' fanbase?", hint:"NFC West.", a:"Seattle Seahawks" },
+  { q:"'America’s Team'?", hint:"NFC East.", a:"Dallas Cowboys" },
+  { q:"Drafted Peyton & Luck?", hint:"Horseshoe logo.", a:"Indianapolis Colts" },
+  { q:"Moved from St. Louis to LA in 2016?", hint:"Blue/yellow team.", a:"Los Angeles Rams" },
+  { q:"Moved from SD to LA?", hint:"Bolt logo.", a:"Los Angeles Chargers" },
+  { q:"199th pick QB with 7 SBs?", hint:"GOAT.", a:"Tom Brady" },
+  { q:"Bengals #1 pick 2020?", hint:"LSU star.", a:"Joe Burrow" },
+  { q:"Packers QB drafted in 2020?", hint:"Rodgers successor.", a:"Jordan Love" },
+
+  { q:"Cards QB who won Heisman + MLB pick?", hint:"Dual-threat.", a:"Kyler Murray" },
+  { q:"'Matty Ice' Falcons QB?", hint:"SB LI collapse.", a:"Matt Ryan" },
+  { q:"OT TD scorer in SB LI?", hint:"Patriots RB.", a:"James White" },
+  { q:"Julio Jones miracle sideline catch?", hint:"SB LI.", a:"Julio Jones" },
+  { q:"Edelman juggling catch SB LI?", hint:"Patriots WR.", a:"Julian Edelman" },
+  { q:"Immaculate Reception intended target?", hint:"Steelers back.", a:"Frenchy Fuqua" },
+  { q:"Ravens LB #52?", hint:"SB XLVII win.", a:"Ray Lewis" },
+  { q:"All-time sack leader?", hint:"Bills/Redskins DE.", a:"Bruce Smith" },
+  { q:"LT #56 changed defense?", hint:"NY Giants.", a:"Lawrence Taylor" },
+  { q:"Weapon X safety?", hint:"Eagles legend.", a:"Brian Dawkins" },
+
+  { q:"Shutdown Steelers safety #43?", hint:"Leaping legend.", a:"Troy Polamalu" },
+  { q:"Cowboys WR #88 from 1990s?", hint:"Triplet WR.", a:"Michael Irvin" },
+  { q:"Bucs SB XXXVII legendary defender?", hint:"Pick-six machine.", a:"Derrick Brooks" },
+  { q:"Lions QB who threw 5k yards in 2011?", hint:"#9.", a:"Matthew Stafford" },
+  { q:"Historic Bills QB of K-Gun offense?", hint:"Lead of 4 SB run.", a:"Jim Kelly" },
+  { q:"Steelers coach with 2 rings?", hint:"Mustache era.", a:"Bill Cowher" },
+  { q:"Broncos QB who lost 3 SBs before winning 2?", hint:"#7.", a:"John Elway" },
+  { q:"Patriots TE known for freak athleticism?", hint:"#87.", a:"Rob Gronkowski" },
+  { q:"Saints QB with single-season yardage record?", hint:"Dome surgeon.", a:"Drew Brees" },
+  { q:"QB known for Dan-or-Dye mustache era?", hint:"Jags cult hero.", a:"Gardner Minshew" }
+];
+
+/* ---------------- SLIDE GENERATION ---------------- */
+const slidesContainer = document.getElementById("slides");
+
+deck.forEach((card, i) => {
+  const slide = document.createElement("div");
+  slide.className = "slide";
+  if (i === 0) slide.classList.add("active");
+
+  slide.innerHTML = `
+    <button class="hint-btn" onclick="revealHint(this)">Hint</button>
+    <div class="hint">${card.hint}</div>
+    <div class="question">${card.q}</div>
+    <button class="reveal" onclick="reveal(this)">Show Answer</button>
+    <div class="answer">${card.a}</div>
+    <div class="score-actions">
+      <button class="score-btn" onclick="markAnswer(true)" style="background:#2ecc71;">✔</button>
+      <button class="score-btn" onclick="markAnswer(false)" style="background:#e74c3c;">✖</button>
+    </div>
+    <div class="nav-arrows">
+      <button class="nav-arrow-btn" onclick="prevSlide()">◀</button>
+      <button class="nav-arrow-btn" onclick="nextSlide()">▶</button>
+    </div>
+  `;
+  slidesContainer.appendChild(slide);
+});
+
+/* ---------------- LOGIC & FUNCTIONS ---------------- */
+let index = 0;
+const slides = document.querySelectorAll(".slide");
+const answered = new Array(deck.length).fill(null);
+const scoreboard = document.getElementById("scoreboard");
+const finaleOverlay = document.getElementById("finale-overlay");
+
+function showSlide(i) {
+  if (i < 0) i = slides.length - 1;
+  if (i >= slides.length) i = 0;
+  index = i;
+  slides.forEach((s, idx) => s.classList.toggle("active", idx === index));
+  updateScore();
+}
+
+function nextSlide() { showSlide(index + 1); }
+function prevSlide() { showSlide(index - 1); }
+
+function reveal(btn) {
+  const ans = btn.nextElementSibling;
+  ans.style.display = "block";
+  btn.style.display = "none";
+}
+
+function revealHint(btn) {
+  const h = btn.nextElementSibling;
+  h.style.display = "block";
+  btn.style.display = "none";
+}
+
+function markAnswer(isCorrect) {
+  answered[index] = isCorrect;
+  if (index === slides.length - 1) finale();
+  else nextSlide();
+  updateScore();
+}
+
+/* ---------------- SCORING ---------------- */
+function updateScore() {
+  let corr = answered.filter(x => x === true).length;
+  let total = answered.filter(x => x !== null).length;
+  let pct = total === 0 ? 0 : Math.round((corr/total)*100);
+  scoreboard.textContent = `Q: ${index+1}/${slides.length} | Correct: ${corr}/${total} (${pct}%)`;
+}
+
+/* ---------------- FINALE ---------------- */
+function finale() {
+  const corr = answered.filter(x => x === true).length;
+  const total = answered.length;
+  const pct = Math.round((corr/total)*100);
+
+  document.getElementById("final-score-text").textContent =
+    `${pct}% correct (${corr}/${total})`;
+
+  let tier = "";
+  if (pct === 100) tier = "LEGENDS. First-ballot NFL Trivia Hall of Famers.";
+  else if (pct >= 90) tier = "Elite NFL Sickos. Almost perfect.";
+  else if (pct >= 80) tier = "Damn good. Better than RedZone Guy.";
+  else if (pct >= 70) tier = "Respectable. Wildcard-caliber squad.";
+  else if (pct >= 60) tier = "Practice squad with upside.";
+  else tier = "Urban Meyer Jaguars energy.";
+
+  document.getElementById("final-tier-text").textContent = tier;
+
+  scoreboard.style.display = "none";
+  slides.forEach(s => s.classList.remove("active"));
+  finaleOverlay.style.display = "flex";
+
+  if (pct >= 90) startConfetti();
+}
+
+function restartGame() {
+  for (let i = 0; i < answered.length; i++) answered[i] = null;
+  finaleOverlay.style.display = "none";
+  scoreboard.style.display = "block";
+  stopConfetti();
+  showSlide(0);
+}
+
+/* ---------------- CONFETTI ---------------- */
+const confettiCanvas = document.getElementById("confetti");
+const confettiCtx = confettiCanvas.getContext("2d");
+let confettiPieces = [];
+let confettiRunning = false;
+
+function resizeConfetti() {
+  confettiCanvas.width = window.innerWidth;
+  confettiCanvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resizeConfetti);
+resizeConfetti();
+
+function randomColor() {
+  const c = ["#f1c40f","#e67e22","#e74c3c","#2ecc71","#1abc9c","#3498db","#9b59b6","#ff6b81","#fdcb6e"];
+  return c[Math.floor(Math.random()*c.length)];
+}
+
+function startConfetti() {
+  confettiPieces = [];
+  for (let i=0;i<200;i++){
+    confettiPieces.push({
+      x:Math.random()*confettiCanvas.width,
+      y:Math.random()*confettiCanvas.height - confettiCanvas.height,
+      w:5+Math.random()*5,
+      h:8+Math.random()*8,
+      vy:2+Math.random()*3,
+      vx:-1+Math.random()*2,
+      color:randomColor()
+    });
+  }
+  confettiRunning = true;
+  requestAnimationFrame(loopConfetti);
+}
+
+function stopConfetti() {
+  confettiRunning = false;
+  confettiCtx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height);
+}
+
+function loopConfetti() {
+  if (!confettiRunning) return;
+  confettiCtx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height);
+  confettiPieces.forEach(p=>{
+    p.x+=p.vx;
+    p.y+=p.vy;
+    if(p.y>confettiCanvas.height){
+      p.y=-10; p.x=Math.random()*confettiCanvas.width;
+    }
+    confettiCtx.fillStyle=p.color;
+    confettiCtx.fillRect(p.x,p.y,p.w,p.h);
+  });
+  requestAnimationFrame(loopConfetti);
+}
+
+showSlide(0);
+</script>
+</body>
+</html>
