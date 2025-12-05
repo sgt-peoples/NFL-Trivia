@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NFL Trivia Game</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #fff;
+      overflow: hidden;
+    }
+    #scoreboard {
+      position: fixed;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #222;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 1.1em;
+      font-weight: bold;
+      opacity: 0.95;
+      z-index: 10;
+      white-space: nowrap;
+    }
+    .slide {
+      height: 100vh;
+      padding: 40px 16px;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+    .slide.active { display: flex; }
+
+    .question {
+      font-size: 1.7em;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+    .hint {
+      font-size: 0.9em;
+      color: #bbb;
+      display: none;
+      margin-bottom: 10px;
+    }
+    .answer {
+      font-size: 5em;
+      display: none;
+      margin-top: 30px;
+      font-weight: bold;
+    }
+    button {
+      padding: 12px 24px;
+      border-radius: 12px;
+      background: #444;
+      color: white;
+      border: none;
+      font-size: 1.1em;
+    }
+    .hint-btn { font-size: 0.8em; padding: 6px 10px; }
+    .score-actions {
+      margin-top: 20px;
+      display: flex;
+      gap: 20px;
+    }
+    .score-btn {
+      font-size: 2.2em;
+      padding: 10px 20px;
+      border-radius: 50%;
+    }
+
+    .nav-arrows {
+      margin-top: 25px;
+      display: flex;
+      gap: 30px;
+    }
+    .nav-arrow-btn {
+      background: none;
+      border: none;
+      font-size: 2em;
+      color: #888;
+    }
+
+    #finale-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.95);
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 20px;
+      z-index: 20;
+    }
+    #finale-overlay h1 { font-size: 2.4em; margin-bottom: 10px; }
+    #final-score-text { font-size: 1.6em; margin-bottom: 8px; }
+    #final-tier-text { font-size: 1.2em; margin-bottom: 20px; }
+
+    #confetti {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="confetti"></canvas>
+
+<div id="scoreboard">Loading…</div>
+
+<div id="slides"></div>
+
+<div id="finale-overlay">
+  <h1>FINAL SCORE</h1>
+  <div id="final-score-text"></div>
+  <div id="final-tier-text"></div>
+  <button onclick="restartGame()">Play Again</button>
+</div>
+
+<!-- LOAD THE QUESTION DECK -->
+<script src="questions.js"></script>
+
+<script>
+/* ----------------------------
+   RENDER SLIDES FROM deck[ ]
+----------------------------- */
+
+const slidesContainer = document.getElementById("slides");
+
+deck.forEach((card, i) => {
+  const div = document.createElement("div");
+  div.className = "slide" + (i === 0 ? " active" : "");
+
+  div.innerHTML = `
+    <button class="hint-btn" onclick="showHint(this)">Hint</button>
+    <div class="hint">${card.hint}</div>
+
+    <div class="question">${card.q}</div>
+
+    <button onclick="showAnswer(this)">Show Answer</button>
+    <div class="answer">${card.a}</div>
+
+    <div class="score-actions">
+      <button class="score-btn" style="background:#2ecc71;" onclick="mark(true)">✔</button>
+      <button class="score-btn" style="background:#e74c3c;" onclick="mark(false)">✖</button>
+    </div>
+
+    <div class="nav-arrows">
+      <button class="nav-arrow-btn" onclick="prev()">◀</button>
+      <button class="nav-arrow-btn" onclick="next()">▶</button>
+    </div>
+  `;
+
+  slidesContainer.appendChild(div);
+});
+
+let index = 0;
+let answered = Array(deck.length).fill(null);
+
+const slides = document.querySelectorAll(".slide");
+const scoreboard = document.getElementById("scoreboard");
+const finale = document.getElementById("finale-overlay");
+
+/* ----------------------------
+   HINT + ANSWER
+----------------------------- */
+
+function showHint(btn) {
+  btn.nextElementSibling.style.display = "block";
+  btn.style.display = "none";
+}
+
+function showAnswer(btn) {
+  btn.nextElementSibling.style.display = "block";
+  btn.style.display = "none";
+}
+
+/* ----------------------------
+   NAVIGATION
+----------------------------- */
+
+function showSlide(i) {
+  slides[index].classList.remove("active");
+  index = (i + slides.length) % slides.length;
+  slides[index].classList.add("active");
+  updateScore();
+}
+
+function next() { showSlide(index + 1); }
+function prev() { showSlide(index - 1); }
+
+/* ----------------------------
+   SCORING
+----------------------------- */
+
+function mark(correct) {
+  answered[index] = correct;
+
+  if (index === slides.length - 1) {
+    showFinale();
+  } else {
+    next();
+  }
+
+  updateScore();
+}
+
+function updateScore() {
+  const correct = answered.filter(x => x === true).length;
+  const total = answered.filter(x => x !== null).length;
+  const pct = total === 0 ? 0 : Math.round((correct / total) * 100);
+
+  scoreboard.textContent =
+    `Q: ${index+1}/${deck.length} | Correct: ${correct}/${total} (${pct}%)`;
+}
+
+/* ----------------------------
+   FINALE SCREEN + CONFETTI
+----------------------------- */
+
+function showFinale() {
+  const correct = answered.filter(x => x === true).length;
+  const total = deck.length;
+  const pct = Math.round((correct / total) * 100);
+
+  document.getElementById("final-score-text").textContent =
+    `${pct}% correct (${correct}/${total})`;
+
+  document.getElementById("final-tier-text").textContent =
+    pct === 100 ? "LEGENDS." :
+    pct >= 90 ? "Elite NFL Sickos." :
+    pct >= 80 ? "Damn good." :
+    pct >= 70 ? "Respectable." :
+    pct >= 60 ? "Practice squad upside." :
+                "Urban Meyer Jaguars energy.";
+
+  scoreboard.style.display = "none";
+  finale.style.display = "flex";
+
+  if (pct >= 90) startConfetti();
+}
+
+/* ----------------------------
+   RESTART
+----------------------------- */
+
+function restartGame() {
+  answered = Array(deck.length).fill(null);
+  finale.style.display = "none";
+  scoreboard.style.display = "block";
+  stopConfetti();
+  showSlide(0);
+}
+
+/* ----------------------------
+   CONFETTI
+----------------------------- */
+
+const canvas = document.getElementById("confetti");
+const ctx = canvas.getContext("2d");
+let confetti = [];
+let running = false;
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resize);
+resize();
+
+function startConfetti() {
+  confetti = [];
+  for (let i = 0; i < 200; i++) {
+    confetti.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * -canvas.height,
+      w: 5 + Math.random()*5,
+      h: 5 + Math.random()*5,
+      vy: 2 + Math.random()*3,
+      vx: -1 + Math.random()*2,
+      color: ["#f1c40f","#e67e22","#e74c3c","#2ecc71","#3498db","#9b59b6"][Math.floor(Math.random()*6)]
+    });
+  }
+  running = true;
+  requestAnimationFrame(loop);
+}
+
+function stopConfetti() {
+  running = false;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+}
+
+function loop() {
+  if (!running) return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  confetti.forEach(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    if (p.y > canvas.height) p.y = -10;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x,p.y,p.w,p.h);
+  });
+
+  requestAnimationFrame(loop);
+}
+
+updateScore();
+</script>
+
+</body>
+</html>
