@@ -1,6 +1,7 @@
-// Full 100-Question NFL Trivia Deck (Final, Verified)
+// Full 100-question NFL Trivia Deck (Final Version)
 
 const deck = [
+
   { q:"Who caught the Minneapolis Miracle?", hint:"Vikings WR vs Saints, last-second TD.", a:"Stefon Diggs" },
   { q:"Who won unanimous MVP in 2019?", hint:"Ravens QB.", a:"Lamar Jackson" },
   { q:"Who holds the record with 23 receiving TDs?", hint:"2007 Patriots.", a:"Randy Moss" },
@@ -8,7 +9,7 @@ const deck = [
   { q:"Who holds the single-game rushing record of 296 yards?", hint:"Vikings RB.", a:"Adrian Peterson" },
   { q:"Who is the all-time passing TD leader?", hint:"Patriots/Bucs legend.", a:"Tom Brady" },
   { q:"Who made the Immaculate Reception?", hint:"Steelers RB/FB.", a:"Franco Harris" },
-  { q:"Who won Super Bowl I?", hint:"Coached by Vince Lombardi.", a:"Green Bay Packers" },
+  { q:"Who won Super Bowl I?", hint:"Coached by Lombardi.", a:"Green Bay Packers" },
   { q:"Who was the Steelers’ 4-time SB coach?", hint:"1970s dynasty.", a:"Chuck Noll" },
   { q:"Who made 'The Catch'?", hint:"49ers WR.", a:"Dwight Clark" },
 
@@ -16,10 +17,10 @@ const deck = [
   { q:"Which referee was known for huge biceps?", hint:"Iconic NFL official.", a:"Ed Hochuli" },
   { q:"Which replacement ref ruled the 'Fail Mary'?", hint:"Monday night controversy.", a:"Lance Easley" },
   { q:"'You play to win the game' coach?", hint:"Jets HC.", a:"Herm Edwards" },
-  { q:"Patriots coach with 6 Super Bowl wins?", hint:"'The Hoodie'.", a:"Bill Belichick" },
+  { q:"Patriots coach with 6 Super Bowls?", hint:"'The Hoodie'.", a:"Bill Belichick" },
   { q:"Who made the Helmet Catch?", hint:"Giants WR.", a:"David Tyree" },
   { q:"Who threw the Helmet Catch?", hint:"Giants QB.", a:"Eli Manning" },
-  { q:"Only undefeated team incl. Super Bowl?", hint:"Perfect season.", a:"1972 Dolphins" },
+  { q:"Only undefeated team including Super Bowl?", hint:"Perfect season.", a:"1972 Dolphins" },
   { q:"Who returned SB XLI opening kickoff for a TD?", hint:"Bears legend.", a:"Devin Hester" },
   { q:"Who is 'The Sheriff'?", hint:"Colts/Broncos QB.", a:"Peyton Manning" },
 
@@ -48,19 +49,18 @@ const deck = [
   { q:"Chiefs star TE?", hint:"Future HOF.", a:"Travis Kelce" },
   { q:"Chiefs dynasty coach?", hint:"Big Red.", a:"Andy Reid" },
   { q:"Lost 4 straight SBs?", hint:"Early 90s AFC team.", a:"Buffalo Bills" },
-  { q:"SB XXXVI game-winning FG kicker?", hint:"Patriots clutch kicker.", a:"Adam Vinatieri" },
-  { q:"100-yard NFC Champ pick-six?", hint:"Bucs legend.", a:"Ronde Barber" },
-  { q:"Steelers safety #43?", hint:"Hair icon.", a:"Troy Polamalu" },
+  { q:"SB XXXVI game-winning FG kicker?", hint:"Patriots legend.", a:"Adam Vinatieri" },
+  { q:"100-yard NFC Champ pick-six?", hint:"Bucs DB.", a:"Ronde Barber" },
+  { q:"Steelers S #43?", hint:"Hair icon.", a:"Troy Polamalu" },
   { q:"Shutdown CB 'Island'?", hint:"Jets CB.", a:"Darrelle Revis" },
   { q:"49ers WCO creator?", hint:"Offensive genius.", a:"Bill Walsh" },
-  { q:"Cowboys suit-and-hat coach?", hint:"Legendary sideline figure.", a:"Tom Landry" },
+  { q:"Cowboys suit-and-hat coach?", hint:"Legend.", a:"Tom Landry" },
   { q:"'They are who we thought they were'?", hint:"Cards coach.", a:"Dennis Green" },
-
-  { q:"'Eat this W' speech?", hint:"QB meme.", a:"Jameis Winston" },
+  { q:"'Eat this W' speech?", hint:"QB meme moment.", a:"Jameis Winston" },
   { q:"'Just win, baby' owner?", hint:"Raiders legend.", a:"Al Davis" },
   { q:"Super Bowl trophy name?", hint:"Named after Packers coach.", a:"Vince Lombardi Trophy" },
   { q:"Cheesehead fans?", hint:"NFC North team.", a:"Green Bay Packers" },
-  { q:"Arrowhead Stadium team?", hint:"Loudest stadium.", a:"Kansas City Chiefs" },
+  { q:"Arrowhead Stadium team?", hint:"Loudest venue.", a:"Kansas City Chiefs" },
   { q:"Lambeau Field team?", hint:"Frozen Tundra.", a:"Green Bay Packers" },
   { q:"'12th Man' fanbase?", hint:"NFC West.", a:"Seattle Seahawks" },
   { q:"'America’s Team'?", hint:"NFC East.", a:"Dallas Cowboys" },
@@ -68,9 +68,9 @@ const deck = [
   { q:"Moved from St. Louis to LA in 2016?", hint:"Blue/yellow team.", a:"Los Angeles Rams" },
 
   { q:"Moved from SD to LA?", hint:"Bolt logo.", a:"Los Angeles Chargers" },
-  { q:"199th pick with 7 SBs?", hint:"GOAT.", a:"Tom Brady" },
-  { q:"Bengals #1 pick in 2020?", hint:"LSU star.", a:"Joe Burrow" },
-  { q:"Packers drafted as Rodgers’ successor?", hint:"#10 QB.", a:"Jordan Love" },
+  { q:"199th pick with 7 SBs?", hint:"GOAT QB.", a:"Tom Brady" },
+  { q:"Bengals #1 pick in 2020?", hint:"LSU champion.", a:"Joe Burrow" },
+  { q:"Packers QB drafted as Rodgers’ successor?", hint:"#10 QB.", a:"Jordan Love" },
   { q:"Cards QB drafted #1 in 2019?", hint:"Dual-threat.", a:"Kyler Murray" },
   { q:"'Matty Ice'?", hint:"Falcons QB.", a:"Matt Ryan" },
   { q:"OT TD scorer in SB LI?", hint:"Patriots RB #28.", a:"James White" },
@@ -87,16 +87,17 @@ const deck = [
   { q:"Patriots TE #87?", hint:"Freak athlete.", a:"Rob Gronkowski" },
   { q:"Saints QB with passing yards record?", hint:"#9.", a:"Drew Brees" },
   { q:"Jaguars QB mustache meme?", hint:"Cult hero.", a:"Gardner Minshew" },
-  { q:"Bills QB of K-Gun offense?", hint:"90s AFC power.", a:"Jim Kelly" },
+  { q:"Bills QB of K-Gun offense?", hint:"90s AFC powerhouse.", a:"Jim Kelly" },
 
-  { q:"Steel Curtain team?", hint:"70s defense.", a:"Pittsburgh Steelers" },
-  { q:"Team known for 'Dawg Pound' fans?", hint:"AFC North.", a:"Cleveland Browns" },
-  { q:"NFC North team named after a big cat?", hint:"Thanksgiving games.", a:"Detroit Lions" },
-  { q:"NFC North team with horn logo?", hint:"Purple.", a:"Minnesota Vikings" },
+  { q:"Steel Curtain team?", hint:"70s dynasty defense.", a:"Pittsburgh Steelers" },
+  { q:"Team known for Dawg Pound fans?", hint:"AFC North.", a:"Cleveland Browns" },
+  { q:"NFC North team named after a big cat?", hint:"Thanksgiving hosts.", a:"Detroit Lions" },
+  { q:"NFC North team with horn logo?", hint:"Purple people.", a:"Minnesota Vikings" },
   { q:"AFC West team known for The Black Hole?", hint:"Silver & black.", a:"Las Vegas Raiders" },
-  { q:"NFC West bird team?", hint:"Plays in Arizona.", a:"Arizona Cardinals" },
-  { q:"'Who Dat' fanbase?", hint:"Superdome.", a:"New Orleans Saints" },
+  { q:"NFC West bird team?", hint:"Arizona franchise.", a:"Arizona Cardinals" },
+  { q:"'Who Dat' fanbase?", hint:"Superdome team.", a:"New Orleans Saints" },
   { q:"Stadium nicknamed 'The Jungle'?", hint:"AFC North.", a:"Cincinnati Bengals" },
   { q:"Team that lost on Music City Miracle?", hint:"1999 playoffs.", a:"Buffalo Bills" },
   { q:"Which QB was at center of Deflategate?", hint:"Patriots QB.", a:"Tom Brady" }
+
 ];
